@@ -486,12 +486,26 @@ const TOTAL = 365;
 const RATING_LABELS = { 1: '😞 Плохо', 2: '👌 Норм', 3: '💪 Огонь' };
 
 const ACHIEVEMENTS = [
+  // Всего тренировок
   { count: 7,   icon: '🔥', label: '7 тренировок' },
   { count: 14,  icon: '⚡', label: '14 тренировок' },
   { count: 30,  icon: '🏅', label: '30 тренировок' },
   { count: 90,  icon: '🏆', label: '90 тренировок' },
   { count: 180, icon: '💎', label: '180 тренировок' },
   { count: 365, icon: '👑', label: '365 тренировок' },
+  // Рыбалка
+  { count: 5,  type: 'Рыбалка', icon: '🎣', label: '5 рыбалок' },
+  { count: 10, type: 'Рыбалка', icon: '🎣', label: '10 рыбалок' },
+  { count: 25, type: 'Рыбалка', icon: '🎣', label: '25 рыбалок!' },
+  { count: 50, type: 'Рыбалка', icon: '🐟', label: '50 рыбалок' },
+  // Сплав
+  { count: 1,  type: 'Сплав',   icon: '🛶', label: '1 сплав' },
+  // Силовые
+  { count: 15, type: 'Силовые', icon: '🏋️', label: '15 силовых' },
+  { count: 30, type: 'Силовые', icon: '💪', label: '30 силовых' },
+  // Бег
+  { count: 15, type: 'Бег',     icon: '🏃', label: '15 беговых' },
+  { count: 30, type: 'Бег',     icon: '🥇', label: '30 беговых' },
 ];
 
 let data = JSON.parse(localStorage.getItem('challenge365') || '{}');
@@ -851,10 +865,15 @@ function getCurrentStreak() {
 
 function updateAchievements() {
   const total = Object.keys(data).length;
+  const typeCounts = {};
+  Object.values(data).forEach(e => {
+    if (e.types) e.types.forEach(t => { typeCounts[t] = (typeCounts[t] || 0) + 1; });
+  });
   const el = document.getElementById('achievements');
   el.innerHTML = '';
   ACHIEVEMENTS.forEach(a => {
-    if (total >= a.count) {
+    const val = a.type ? (typeCounts[a.type] || 0) : total;
+    if (val >= a.count) {
       const div = document.createElement('div');
       div.className = 'achievement';
       div.innerHTML = `<i>${a.icon}</i> ${a.label}`;
