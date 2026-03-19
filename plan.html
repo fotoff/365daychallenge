@@ -60,7 +60,7 @@
 
     .table-header {
       display: grid;
-      grid-template-columns: 52px 155px 1fr 130px 175px 36px;
+      grid-template-columns: 52px 170px 1fr 120px 165px 44px;
       background: #fafaf8; border-bottom: 1px solid #e8e8e3;
     }
     .th {
@@ -70,7 +70,7 @@
 
     .day-row {
       display: grid;
-      grid-template-columns: 52px 155px 1fr 130px 175px 36px;
+      grid-template-columns: 52px 170px 1fr 120px 165px 44px;
       border-bottom: 1px solid #f0f0ec; align-items: start;
       transition: background 0.1s;
     }
@@ -87,11 +87,13 @@
 
     /* Type selector */
     .type-cell { display: flex; align-items: center; gap: 6px; padding-top: 12px; }
-    .type-icon { font-size: 1.05rem; min-width: 22px; line-height: 1; }
+    .type-icon { font-size: 1.1rem; min-width: 22px; line-height: 1; flex-shrink: 0; }
     .type-select {
       border: none; background: transparent; font-family: 'Inter', sans-serif;
       font-size: 0.83rem; color: #1a1a1a; outline: none; cursor: pointer;
-      width: 100%; min-width: 0;
+      width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      /* Hide native arrow, use emoji icon instead */
+      -webkit-appearance: none; appearance: none; padding-right: 0;
     }
 
     /* Inputs */
@@ -103,19 +105,29 @@
     .field-input::placeholder { color: #d0d0cc; }
     .cell-ta { padding-top: 12px; }
 
-    /* Description */
+    /* Description toggle button */
     .desc-btn {
       width: 26px; height: 26px; border-radius: 50%;
       border: 1px solid #e8e8e3; background: transparent;
-      cursor: pointer; font-size: 0.7rem; display: flex; align-items: center;
-      justify-content: center; margin-top: 10px; color: #bbb;
-      transition: all 0.15s;
+      cursor: pointer; font-size: 0.68rem; display: flex; align-items: center;
+      justify-content: center; margin-top: 10px; margin-left: 4px; color: #bbb;
+      transition: all 0.15s; flex-shrink: 0; line-height: 1;
+      user-select: none;
     }
     .desc-btn:hover { background: #f0f0ec; color: #555; }
     .desc-btn.has-desc { background: #f0f0ec; color: #555; border-color: #d0d0cc; }
 
-    .desc-row { display: none; padding: 0 14px 12px 80px; }
-    .desc-row.open { display: block; }
+    /* Description row — same grid, textarea spans cols 2–6 */
+    .desc-row {
+      display: none;
+      grid-template-columns: 52px 170px 1fr 120px 165px 44px;
+      padding-bottom: 12px;
+    }
+    .desc-row.open { display: grid; }
+    .desc-inner {
+      grid-column: 2 / -1;
+      padding: 0 14px 0 0;
+    }
     .desc-textarea {
       width: 100%; border: none; background: #f6f6f3; border-radius: 10px;
       font-family: 'Inter', sans-serif; font-size: 0.8rem; color: #1a1a1a;
@@ -163,8 +175,10 @@
       .day-name { padding-top: 0; margin-bottom: 6px; }
       .type-cell { padding-top: 0; }
       .cell-ta { padding-top: 4px; }
-      .desc-btn { margin-top: 6px; }
-      .desc-row { padding: 0 0 12px; }
+      .desc-btn { margin-top: 6px; margin-left: 0; }
+      .desc-row { display: none; padding: 0 16px 12px; }
+      .desc-row.open { display: block; }
+      .desc-inner { grid-column: unset; padding: 0; }
     }
   </style>
 </head>
@@ -309,8 +323,9 @@ function toggleDesc(wi, di) {
 
 // ── Render ──
 function renderWeek(week, wi) {
+  // Options: text only (no emoji — icon shown separately in span)
   const typeOpts = (selected) =>
-    TYPES.map(t => `<option value="${t.v}" ${selected === t.v ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('');
+    TYPES.map(t => `<option value="${t.v}" ${selected === t.v ? 'selected' : ''}>${t.label}</option>`).join('');
 
   const rows = week.days.map((day, di) => {
     const isWeekend = WEEKEND_IDX.includes(di);
@@ -348,10 +363,12 @@ function renderWeek(week, wi) {
         </div>
       </div>
       <div class="desc-row ${hasDesc ? 'open' : ''}" id="desc-${wi}-${di}">
-        <textarea class="desc-textarea" id="desctxt-${wi}-${di}" rows="2"
-          placeholder="Подробное описание, упражнения, заметки..."
-          onchange="updateField(${wi},${di},'description',this.value)"
-        >${escHtml(day.description)}</textarea>
+        <div class="desc-inner">
+          <textarea class="desc-textarea" id="desctxt-${wi}-${di}" rows="2"
+            placeholder="Подробное описание, упражнения, заметки..."
+            onchange="updateField(${wi},${di},'description',this.value)"
+          >${escHtml(day.description)}</textarea>
+        </div>
       </div>
     `;
   }).join('');
