@@ -89,8 +89,3 @@ leaderboard/
     updated: 1234567890
 ```
 
----
-
-## Скриншот
-
-![Лидерборд](https://fuckfishing.ru/365daychallenge/screenshot.png)
