@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>365-Дневный Челлендж</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(240 10% 3.9%);
+    --card: hsl(0 0% 100%);
+    --muted: hsl(240 4.8% 95.9%);
+    --muted-foreground: hsl(240 3.8% 46.1%);
+    --border: hsl(240 5.9% 90%);
+    --input: hsl(240 5.9% 90%);
+    --ring: hsl(240 5% 64.9%);
+    --primary: hsl(240 5.9% 10%);
+    --primary-foreground: hsl(0 0% 98%);
+    --destructive: hsl(0 84.2% 60.2%);
+    --success: hsl(142 71% 45%);
+    --success-light: hsl(142 76% 94%);
+    --missed: hsl(0 84% 60%);
+    --missed-light: hsl(0 86% 95%);
+    --radius: 0.375rem;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { flex: 1; padding: 48px 24px 32px; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--muted-foreground); }
+
+  /* User bar */
+  .user-bar {
+    display: none; align-items: center; gap: 6px;
+    margin-left: 8px; font-size: 12px; color: var(--muted-foreground);
+    white-space: nowrap;
+  }
+  .user-bar.visible { display: flex; }
+  .user-name { font-weight: 600; color: var(--foreground); }
+  .user-bar button {
+    background: none; border: none; color: var(--muted-foreground); cursor: pointer;
+    font-size: 12px; font-family: inherit; text-decoration: underline;
+    text-underline-offset: 2px; padding: 0;
+  }
+  .user-bar button:hover { color: var(--foreground); }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 16px; justify-content: center;
+  }
+  .tab {
+    padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border);
+    background: var(--card); font-size: 13px; font-weight: 500; font-family: inherit;
+    cursor: pointer; transition: all 150ms; color: var(--foreground);
+  }
+  .tab:hover { background: var(--muted); }
+  .tab.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Achievements */
+  .achievements { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; min-height: 0; }
+  .achievement {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px;
+    border-radius: 9999px; font-size: 12px; font-weight: 500;
+    border: 1px solid hsl(38 80% 60%); background: hsl(48 96% 94%);
+    color: var(--foreground); box-shadow: 0 0 0 1px hsla(38, 80%, 50%, 0.1);
+    animation: achievePop 300ms ease;
+  }
+  @keyframes achievePop { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+  .achievement i { font-style: normal; font-size: 14px; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; }
+  .cell {
+    aspect-ratio: 1; border-radius: var(--radius); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500; color: var(--muted-foreground);
+    cursor: pointer; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--card); user-select: none; position: relative; overflow: visible;
+  }
+  .cell:hover { border-color: var(--ring); background: var(--muted); transform: scale(1.1); z-index: 2; }
+  .cell.done { background: var(--success-light); border-color: var(--success); font-size: 16px; color: var(--foreground); }
+  .cell.done.short { background: hsl(48 96% 94%); border-color: hsl(38 92% 50%); }
+  .cell.done.short.multi::after { color: hsl(38 92% 50%); }
+  .cell.done.multi::after {
+    content: attr(data-count); position: absolute; top: 1px; right: 3px;
+    font-size: 8px; font-weight: 700; color: var(--success);
+  }
+  .cell.missed { background: var(--missed-light); border-color: var(--missed); color: var(--missed); }
+
+  /* Tooltip */
+  .cell .tooltip {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: var(--foreground); color: var(--primary-foreground);
+    font-size: 11px; font-weight: 400; padding: 6px 10px; border-radius: var(--radius);
+    white-space: nowrap; z-index: 100; pointer-events: none; line-height: 1.4;
+  }
+  .cell .tooltip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 4px solid transparent; border-top-color: var(--foreground);
+  }
+  .cell:hover .tooltip { display: block; }
+
+  /* Overlay & Dialog */
+  .overlay { display: none; position: fixed; inset: 0; background: hsla(0,0%,0%,0.5); z-index: 50; backdrop-filter: blur(4px); }
+  .overlay.active { display: flex; align-items: center; justify-content: center; animation: fadeIn 150ms ease; }
+  @keyframes fadeIn { from { opacity: 0 } }
+  @keyframes contentShow { from { opacity: 0; transform: translate(0,8px) scale(0.97); } to { opacity: 1; transform: translate(0,0) scale(1); } }
+  .dialog {
+    background: var(--card); border-radius: 0.5rem; border: 1px solid var(--border);
+    padding: 24px; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 16px 70px -12px hsla(0,0%,0%,0.25); animation: contentShow 200ms ease;
+  }
+  .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .dialog-title { font-size: 18px; font-weight: 600; letter-spacing: -0.015em; }
+  .dialog-close {
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius); border: none; background: transparent;
+    color: var(--muted-foreground); cursor: pointer; font-size: 16px; transition: background 150ms, color 150ms;
+  }
+  .dialog-close:hover { background: var(--muted); color: var(--foreground); }
+
+  .field { margin-bottom: 16px; }
+  .label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--foreground); }
+  .badge-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px;
+    border-radius: 9999px; border: 1px solid var(--border); background: var(--card);
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all 150ms; user-select: none; color: var(--foreground);
+  }
+  .badge:hover { background: var(--muted); border-color: var(--ring); }
+  .badge.selected { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .badge-icon { font-style: normal; }
+
+  .input {
+    width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--input);
+    border-radius: var(--radius); font-size: 14px; font-family: inherit;
+    background: transparent; color: var(--foreground); outline: none;
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px hsla(240,5%,65%,0.2); }
+  .input::placeholder { color: var(--muted-foreground); }
+  textarea.input { height: auto; min-height: 72px; padding: 8px 12px; resize: vertical; }
+
+  .duration-list { display: flex; flex-direction: column; gap: 8px; }
+  .duration-row { display: flex; align-items: center; gap: 8px; }
+  .duration-row-label { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; min-width: 120px; color: var(--foreground); }
+  .duration-row-label i { font-style: normal; }
+  .duration-row .input { width: 100px; flex-shrink: 0; }
+  .duration-row .duration-unit { font-size: 12px; color: var(--muted-foreground); }
+
+  .rating-group { display: flex; gap: 6px; }
+  .rating-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .rating-btn {
+    width: 44px; height: 44px; border-radius: var(--radius); border: 1px solid var(--input);
+    background: var(--card); font-size: 20px; cursor: pointer; transition: all 150ms;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rating-btn:hover { border-color: var(--ring); transform: scale(1.06); }
+  .rating-btn.active { border-width: 2px; }
+  .rating-btn.active[data-r="1"] { border-color: var(--destructive); background: var(--missed-light); }
+  .rating-btn.active[data-r="2"] { border-color: hsl(38 92% 50%); background: hsl(48 96% 94%); }
+  .rating-btn.active[data-r="3"] { border-color: var(--success); background: var(--success-light); }
+  .rating-label { font-size: 10px; color: var(--muted-foreground); }
+
+  .dialog-footer { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px;
+    border-radius: var(--radius); font-size: 14px; font-weight: 500; font-family: inherit;
+    cursor: pointer; transition: all 150ms; border: 1px solid var(--input); background: var(--card); color: var(--foreground);
+  }
+  .btn:hover { background: var(--muted); }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .btn-primary:hover { opacity: 0.9; background: var(--primary); }
+  .btn-ghost { border-color: transparent; background: transparent; }
+  .btn-ghost:hover { background: var(--muted); }
+  .btn-destructive { color: var(--destructive); border-color: transparent; background: transparent; }
+  .btn-destructive:hover { background: var(--missed-light); }
+
+  /* Leaderboard */
+  .leaderboard { max-width: 600px; margin: 0 auto; }
+  .lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .lb-table th {
+    text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600;
+    color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+  }
+  .lb-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .lb-table tr:last-child td { border-bottom: none; }
+  .lb-row-me td { background: hsl(48 96% 96%); font-weight: 600; }
+  .lb-rank { width: 40px; font-weight: 700; color: var(--muted-foreground); }
+  .lb-name { font-weight: 600; }
+  .lb-val { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .lb-medal { font-size: 16px; }
+  .lb-empty { text-align: center; padding: 40px; color: var(--muted-foreground); font-size: 14px; }
+  .lb-loading { text-align: center; padding: 40px; color: var(--muted-foreground); font-size: 13px; }
+
+  /* Footer */
+  footer { border-top: 1px solid var(--border); padding: 12px 24px; background: var(--card); }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; display: flex; align-items: center;
+    justify-content: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted-foreground);
+  }
+  .footer-chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+    border-radius: 9999px; background: var(--muted); font-size: 12px; font-weight: 500;
+  }
+  .footer-chip b { color: var(--foreground); font-weight: 700; }
+  .footer-chip i { font-style: normal; }
+  .footer-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+
+  .footer-actions { position: fixed; bottom: 12px; right: 12px; display: flex; gap: 4px; z-index: 10; }
+  .footer-actions button {
+    width: 28px; height: 28px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--card); color: var(--muted-foreground); font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 150ms; opacity: 0.4;
+  }
+  .footer-actions button:hover { opacity: 1; background: var(--muted); }
+
+  /* Join leaderboard dialog */
+  .join-overlay {
+    display: none; position: fixed; inset: 0; background: hsla(0,0%,0%,0.5);
+    z-index: 200; backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .join-overlay.active { display: flex; animation: fadeIn 150ms ease; }
+  .join-card {
+    background: var(--card); border-radius: 0.5rem; border: 1px solid var(--border);
+    padding: 32px 28px; width: 90%; max-width: 360px; text-align: center;
+    box-shadow: 0 16px 70px -12px hsla(0,0%,0%,0.25); animation: contentShow 200ms ease;
+  }
+  .join-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .join-card p { color: var(--muted-foreground); font-size: 14px; margin-bottom: 20px; }
+  .join-card .input { margin-bottom: 12px; text-align: center; font-size: 16px; height: 44px; }
+  .join-card .btn { width: 100%; height: 44px; font-size: 15px; margin-bottom: 8px; }
+  .join-card .btn-skip { color: var(--muted-foreground); font-size: 13px; background: none; border: none; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  .join-card .btn-skip:hover { color: var(--foreground); }
+  .join-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--muted-foreground); font-size: 12px; }
+  .join-divider::before, .join-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .join-code-section { text-align: left; }
+  .join-code-section .label { font-size: 13px; color: var(--muted-foreground); margin-bottom: 6px; display: block; }
+  .join-code-row { display: flex; gap: 8px; }
+  .join-code-row .input { text-align: center; letter-spacing: 3px; font-weight: 600; text-transform: uppercase; }
+  .join-code-row .btn { width: auto; flex-shrink: 0; }
+
+  /* Code badge in user bar */
+  .user-code {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--muted); border-radius: 4px; padding: 2px 7px;
+    font-size: 12px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+    position: relative; color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+  .user-code:hover { background: var(--input); }
+  .user-code .code-tip {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); background: var(--foreground); color: var(--primary-foreground);
+    font-size: 11px; font-weight: 400; padding: 6px 10px; border-radius: var(--radius);
+    white-space: nowrap; z-index: 100; letter-spacing: 0; pointer-events: none; line-height: 1.5;
+    text-align: center;
+  }
+  .user-code .code-tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 4px solid transparent; border-top-color: var(--foreground);
+  }
+  .user-code:hover .code-tip { display: block; }
+
+  @media (max-width: 600px) {
+    main { padding: 16px 8px 12px; }
+    .header { margin-bottom: 12px; }
+    .header h1 { font-size: 14px; }
+    .grid { gap: 3px; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); }
+    .cell { font-size: 9px; }
+    .cell.done { font-size: 12px; }
+    .dialog { padding: 20px 16px; }
+    footer { padding: 10px 12px; }
+    .footer-chip { font-size: 11px; padding: 2px 8px; }
+    .duration-row-label { min-width: 90px; font-size: 12px; }
+    .duration-row .input { width: 80px; }
+    .lb-table { font-size: 13px; }
+    .lb-table th, .lb-table td { padding: 8px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Join leaderboard overlay -->
+<div class="join-overlay" id="joinOverlay">
+  <div class="join-card">
+    <h2>🏆 Лидерборд</h2>
+    <p>Введи имя — и твои результаты появятся в общем рейтинге</p>
+    <input class="input" id="nameInput" placeholder="Твоё имя" maxlength="30">
+    <button class="btn btn-primary" onclick="submitName()">Участвовать</button>
+    <button class="btn-skip" onclick="skipJoin()">Просто посмотреть</button>
+    <div class="join-divider">или</div>
+    <div class="join-code-section">
+      <span class="label">Уже участвую с другого устройства — введи свой код:</span>
+      <div class="join-code-row">
+        <input class="input" id="codeInput" placeholder="XXXXXX" maxlength="6">
+        <button class="btn btn-primary" onclick="connectWithCode()">Подключить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="header">
+    <h1>365-Дневный Челлендж</h1>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('challenge')">Мой челлендж</button>
+    <button class="tab" onclick="switchTab('leaderboard')">🏆 Лидерборд</button>
+    <div class="user-bar" id="userBar">
+      👤 <span class="user-name" id="userNameDisplay"></span>
+      <span class="user-code" id="userCodeBadge" onclick="copyCode()">
+        <span id="userCodeDisplay"></span>
+        <span class="code-tip">Твой код для синхронизации<br>с другого устройства.<br>Нажми чтобы скопировать.</span>
+      </span>
+      <button onclick="changeName()">сменить имя</button>
+      <button onclick="deleteSelf()" style="color:var(--destructive)">удалить себя</button>
+    </div>
+  </div>
+
+  <div class="tab-content active" id="tab-challenge">
+    <div class="achievements" id="achievements"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="tab-content" id="tab-leaderboard">
+    <div class="leaderboard" id="leaderboard">
+      <div class="lb-loading">Загрузка...</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner" id="footerInner"></div>
+</footer>
+
+<div class="footer-actions">
+  <button onclick="exportData()" title="Сохранить в файл">💾</button>
+  <button onclick="document.getElementById('importFile').click()" title="Загрузить из файла">📂</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <div class="dialog-header">
+      <h2 class="dialog-title" id="modalTitle">День 1</h2>
+      <button class="dialog-close" onclick="closeModal()">&#10005;</button>
+    </div>
+    <div class="field">
+      <label class="label">Тип тренировки</label>
+      <div class="badge-group" id="typeGrid"></div>
+    </div>
+    <div class="field" id="durationField">
+      <label class="label">Длительность (мин)</label>
+      <div id="durationContainer"></div>
+    </div>
+    <div class="field">
+      <label class="label">Ощущение</label>
+      <div class="rating-group">
+        <div class="rating-item"><button class="rating-btn" data-r="1" onclick="setRating(1)">👎</button><span class="rating-label">Плохо</span></div>
+        <div class="rating-item"><button class="rating-btn" data-r="2" onclick="setRating(2)">👌</button><span class="rating-label">Норм</span></div>
+        <div class="rating-item"><button class="rating-btn" data-r="3" onclick="setRating(3)">💪</button><span class="rating-label">Огонь</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">Комментарий</label>
+      <textarea class="input" id="commentInput" placeholder="Заметки по тренировке..."></textarea>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn btn-destructive" id="deleteBtn" onclick="deleteEntry()">Удалить</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// =============================================
+// 🔧 FIREBASE CONFIG — замени на свой проект
+// Создай проект: https://console.firebase.google.com
+// Realtime Database → создать → режим test
+// =============================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCAdwWaHpcb2M6Qk9f3WxX9GYv1yny2qlY",
+  authDomain: "daychallenge-1572f.firebaseapp.com",
+  databaseURL: "https://daychallenge-1572f-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "daychallenge-1572f",
+  storageBucket: "daychallenge-1572f.firebasestorage.app",
+  messagingSenderId: "598629062490",
+  appId: "1:598629062490:web:f746645b9ceebd1fad0563"
+};
+
+let firebaseReady = false;
+let db = null;
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+  firebaseReady = !FIREBASE_CONFIG.apiKey.startsWith('YOUR_');
+} catch(e) { console.warn('Firebase not configured:', e); }
+
+// =============================================
+const TYPES = [
+  { name: 'Бег',          icon: '🏃' },
+  { name: 'Силовые',      icon: '🏋️' },
+  { name: 'Кардио',       icon: '❤️‍🔥' },
+  { name: 'Бокс',         icon: '🥊' },
+  { name: 'Плавание',     icon: '🏊' },
+  { name: 'Зарядка/ОФП',  icon: '🌅' },
+  { name: 'Ходьба',       icon: '🚶' },
+  { name: 'Йога',         icon: '🧘' },
+  { name: 'Велосипед',    icon: '🚴' },
+  { name: 'Растяжка',     icon: '🤸' },
+  { name: 'Разминка',     icon: '🔄' },
+  { name: 'Заминка',      icon: '🧊' },
+  { name: 'Рыбалка',      icon: '🎣' },
+  { name: 'Лыжи/Сноуборд', icon: '⛷️' },
+  { name: 'Мото',         icon: '🏍️' },
+  { name: 'Сплав',        icon: '🛶' },
+  { name: 'Другое',       icon: '🏷️' },
+];
+
+const TYPE_MAP = {};
+TYPES.forEach(t => TYPE_MAP[t.name] = t.icon);
+
+const TOTAL = 365;
+const RATING_LABELS = { 1: '😞 Плохо', 2: '👌 Норм', 3: '💪 Огонь' };
+
+const ACHIEVEMENTS = [
+  { count: 7,   icon: '🔥', label: '7 тренировок' },
+  { count: 14,  icon: '⚡', label: '14 тренировок' },
+  { count: 30,  icon: '🏅', label: '30 тренировок' },
+  { count: 90,  icon: '🏆', label: '90 тренировок' },
+  { count: 180, icon: '💎', label: '180 тренировок' },
+  { count: 365, icon: '👑', label: '365 тренировок' },
+];
+
+let data = JSON.parse(localStorage.getItem('challenge365') || '{}');
+let userName = localStorage.getItem('challenge365_name') || '';
+let userUID = localStorage.getItem('challenge365_uid') || '';
+let currentCell = null;
+let currentRating = 0;
+let selectedTypes = new Set();
+
+function generateUID() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let uid = '';
+  for (let i = 0; i < 6; i++) uid += chars[Math.floor(Math.random() * chars.length)];
+  return uid;
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(userUID).then(() => {
+    const badge = document.getElementById('userCodeBadge');
+    const orig = document.getElementById('userCodeDisplay').textContent;
+    document.getElementById('userCodeDisplay').textContent = '✓ скопировано';
+    setTimeout(() => { document.getElementById('userCodeDisplay').textContent = orig; }, 1500);
+  });
+}
+
+// --- Name ---
+function initUserBar() {
+  if (userName) {
+    document.getElementById('userNameDisplay').textContent = userName;
+    document.getElementById('userCodeDisplay').textContent = userUID;
+  }
+}
+
+function updateUserBar(tab) {
+  const bar = document.getElementById('userBar');
+  if (tab === 'leaderboard' && userName) {
+    bar.classList.add('visible');
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function submitName() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { document.getElementById('nameInput').focus(); return; }
+  userName = name;
+  if (!userUID) userUID = generateUID();
+  localStorage.setItem('challenge365_name', userName);
+  localStorage.setItem('challenge365_uid', userUID);
+  closeJoinOverlay();
+  document.getElementById('userNameDisplay').textContent = userName;
+  document.getElementById('userCodeDisplay').textContent = userUID;
+  updateUserBar('leaderboard');
+  syncToFirebase();
+  loadLeaderboard();
+}
+
+function connectWithCode() {
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (code.length !== 6) { document.getElementById('codeInput').focus(); return; }
+  if (!firebaseReady) { alert('Firebase не подключён'); return; }
+  db.ref('leaderboard/' + code).once('value').then(snap => {
+    const remote = snap.val();
+    if (!remote) { alert('Код не найден. Проверь и попробуй снова.'); return; }
+    userUID = code;
+    userName = remote.name;
+    data = remote.cells || {};
+    localStorage.setItem('challenge365_uid', userUID);
+    localStorage.setItem('challenge365_name', userName);
+    localStorage.setItem('challenge365', JSON.stringify(data));
+    closeJoinOverlay();
+    document.getElementById('userNameDisplay').textContent = userName;
+    document.getElementById('userCodeDisplay').textContent = userUID;
+    updateUserBar('leaderboard');
+    buildGrid();
+    loadLeaderboard();
+  });
+}
+
+function skipJoin() {
+  closeJoinOverlay();
+  loadLeaderboard();
+}
+
+function closeJoinOverlay() {
+  document.getElementById('joinOverlay').classList.remove('active');
+}
+
+function deleteSelf() {
+  if (!confirm(`Удалить «${userName}» из лидерборда и сбросить все данные челленджа?\n\nЭто действие нельзя отменить.`)) return;
+  if (firebaseReady && userUID) {
+    db.ref('leaderboard/' + userUID).remove();
+  }
+  localStorage.removeItem('challenge365');
+  localStorage.removeItem('challenge365_name');
+  localStorage.removeItem('challenge365_uid');
+  data = {};
+  userName = '';
+  userUID = '';
+  document.getElementById('userBar').classList.remove('visible');
+  buildGrid();
+}
+
+function changeName() {
+  const name = prompt('Введи новое имя:', userName);
+  if (name && name.trim()) {
+    userName = name.trim();
+    localStorage.setItem('challenge365_name', userName);
+    document.getElementById('userNameDisplay').textContent = userName;
+    syncToFirebase();
+  }
+}
+
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitName();
+});
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') connectWithCode();
+});
+
+// --- Tabs ---
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'challenge') || (i === 1 && tab === 'leaderboard'));
+  });
+  document.getElementById('tab-challenge').classList.toggle('active', tab === 'challenge');
+  document.getElementById('tab-leaderboard').classList.toggle('active', tab === 'leaderboard');
+  updateUserBar(tab);
+  if (tab === 'leaderboard') {
+    if (!userName) {
+      // Show join dialog, load leaderboard after
+      document.getElementById('nameInput').value = '';
+      document.getElementById('joinOverlay').classList.add('active');
+      setTimeout(() => document.getElementById('nameInput').focus(), 100);
+    } else {
+      loadLeaderboard();
+    }
+  }
+}
+
+// --- Persist ---
+function persist() {
+  localStorage.setItem('challenge365', JSON.stringify(data));
+  syncToFirebase();
+}
+
+function encodeUser(name) {
+  return btoa(unescape(encodeURIComponent(name))).replace(/[.#$/\[\]]/g, '_');
+}
+
+function calcStats(d) {
+  const entries = Object.values(d);
+  const done = entries.length;
+  const totalMin = entries.reduce((s, e) => s + (e.duration || 0), 0);
+  const hours = Math.round(totalMin / 60 * 10) / 10;
+  const typeSet = new Set();
+  entries.forEach(e => { if (e.types) e.types.forEach(t => typeSet.add(t)); });
+  return { done, hours, typeList: [...typeSet] };
+}
+
+function syncToFirebase() {
+  if (!firebaseReady || !userName || !userUID) return;
+  const stats = calcStats(data);
+  db.ref('leaderboard/' + userUID).set({
+    name: userName,
+    done: stats.done,
+    hours: stats.hours,
+    typeList: stats.typeList,
+    cells: data,
+    updated: Date.now()
+  });
+}
+
+// --- Export / Import ---
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `challenge365_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (typeof imported === 'object' && imported !== null) {
+        data = imported;
+        persist();
+        buildGrid();
+      }
+    } catch (err) { alert('Ошибка чтения файла'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// --- Grid ---
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= TOTAL; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const entry = data[i];
+    if (entry && entry.types && entry.types.length > 0) {
+      cell.classList.add('done');
+      if ((entry.duration || 0) < 30) cell.classList.add('short');
+      cell.textContent = TYPE_MAP[entry.types[0]] || '✓';
+      if (entry.types.length > 1) { cell.classList.add('multi'); cell.dataset.count = entry.types.length; }
+      const tip = document.createElement('span');
+      tip.className = 'tooltip';
+      let parts = [];
+      entry.types.forEach(t => {
+        const dur = entry.durations && entry.durations[t] ? entry.durations[t] : (entry.duration || 0);
+        parts.push(`${TYPE_MAP[t]||''} ${t} ${dur ? dur+'м' : ''}`);
+      });
+      let tipText = parts.join(' · ');
+      if (entry.rating) tipText += ` — ${RATING_LABELS[entry.rating]||''}`;
+      tip.textContent = tipText;
+      cell.appendChild(tip);
+    } else if (entry) {
+      cell.classList.add('done');
+      if ((entry.duration || 0) < 30) cell.classList.add('short');
+      cell.textContent = '✓';
+    } else {
+      cell.textContent = i;
+    }
+    cell.addEventListener('click', () => openModal(i));
+    grid.appendChild(cell);
+  }
+  updateStats();
+}
+
+// --- Duration UI ---
+function renderDurations() {
+  const container = document.getElementById('durationContainer');
+  container.innerHTML = '';
+  const types = [...selectedTypes];
+  const entry = data[currentCell];
+  if (types.length === 0) {
+    const input = document.createElement('input');
+    input.type = 'number'; input.className = 'input'; input.placeholder = '60';
+    input.min = 0; input.max = 600; input.id = 'durationSingle';
+    input.value = entry && entry.duration ? entry.duration : '';
+    container.appendChild(input);
+  } else if (types.length === 1) {
+    const input = document.createElement('input');
+    input.type = 'number'; input.className = 'input'; input.placeholder = '60';
+    input.min = 0; input.max = 600; input.dataset.type = types[0];
+    const dur = entry && entry.durations && entry.durations[types[0]] ? entry.durations[types[0]] : (entry && entry.duration ? entry.duration : '');
+    input.value = dur;
+    container.appendChild(input);
+  } else {
+    const list = document.createElement('div'); list.className = 'duration-list';
+    types.forEach(t => {
+      const row = document.createElement('div'); row.className = 'duration-row';
+      const label = document.createElement('span'); label.className = 'duration-row-label';
+      label.innerHTML = `<i>${TYPE_MAP[t]||''}</i> ${t}`;
+      const input = document.createElement('input');
+      input.type = 'number'; input.className = 'input'; input.placeholder = '0';
+      input.min = 0; input.max = 600; input.dataset.type = t;
+      input.value = entry && entry.durations && entry.durations[t] ? entry.durations[t] : '';
+      const unit = document.createElement('span'); unit.className = 'duration-unit'; unit.textContent = 'мин';
+      row.appendChild(label); row.appendChild(input); row.appendChild(unit);
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+  }
+}
+
+// --- Modal ---
+function openModal(num) {
+  currentCell = num;
+  document.getElementById('modalTitle').textContent = `День ${num}`;
+  const entry = data[num];
+  selectedTypes.clear();
+  const typeGrid = document.getElementById('typeGrid');
+  typeGrid.innerHTML = '';
+  TYPES.forEach(t => {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.innerHTML = `<i class="badge-icon">${t.icon}</i> ${t.name}`;
+    if (entry && entry.types && entry.types.includes(t.name)) { badge.classList.add('selected'); selectedTypes.add(t.name); }
+    badge.addEventListener('click', () => {
+      if (selectedTypes.has(t.name)) { selectedTypes.delete(t.name); badge.classList.remove('selected'); }
+      else { selectedTypes.add(t.name); badge.classList.add('selected'); }
+      renderDurations();
+    });
+    typeGrid.appendChild(badge);
+  });
+  document.getElementById('commentInput').value = entry ? entry.comment || '' : '';
+  currentRating = entry ? entry.rating || 0 : 0;
+  updateRatingUI();
+  renderDurations();
+  document.getElementById('deleteBtn').style.display = entry ? '' : 'none';
+  document.getElementById('overlay').classList.add('active');
+}
+
+function closeModal() { document.getElementById('overlay').classList.remove('active'); currentCell = null; }
+
+function setRating(r) { currentRating = currentRating === r ? 0 : r; updateRatingUI(); }
+
+function updateRatingUI() {
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.r) === currentRating);
+  });
+}
+
+function saveEntry() {
+  if (!currentCell) return;
+  const types = [...selectedTypes];
+  const comment = document.getElementById('commentInput').value.trim();
+  const durations = {};
+  let totalDuration = 0;
+  document.getElementById('durationContainer').querySelectorAll('input[type="number"]').forEach(inp => {
+    const val = parseInt(inp.value) || 0;
+    if (inp.dataset.type) durations[inp.dataset.type] = val;
+    totalDuration += val;
+  });
+  if (types.length === 0 && totalDuration === 0 && currentRating === 0 && !comment) {
+    delete data[currentCell];
+  } else {
+    const isNew = !data[currentCell];
+    if (isNew) {
+      const today = new Date().toDateString();
+      const filledToday = Object.values(data).filter(e => e.createdAt && new Date(e.createdAt).toDateString() === today).length;
+      if (filledToday >= 1) {
+        alert('Можно заполнить только 1 ячейку в день 🙅');
+        return;
+      }
+    }
+    const createdAt = data[currentCell]?.createdAt || Date.now();
+    data[currentCell] = { types, durations, duration: totalDuration, rating: currentRating, comment, createdAt };
+  }
+  persist(); buildGrid(); closeModal();
+}
+
+function deleteEntry() {
+  if (!currentCell) return;
+  delete data[currentCell];
+  persist(); buildGrid(); closeModal();
+}
+
+// --- Stats ---
+function getCurrentStreak() {
+  let streak = 0, maxKey = 0;
+  Object.keys(data).forEach(k => { if (parseInt(k) > maxKey) maxKey = parseInt(k); });
+  if (maxKey > 0) { let d = maxKey; while (d >= 1 && data[d]) { streak++; d--; } }
+  return streak;
+}
+
+function updateAchievements() {
+  const total = Object.keys(data).length;
+  const el = document.getElementById('achievements');
+  el.innerHTML = '';
+  ACHIEVEMENTS.forEach(a => {
+    if (total >= a.count) {
+      const div = document.createElement('div');
+      div.className = 'achievement';
+      div.innerHTML = `<i>${a.icon}</i> ${a.label}`;
+      el.appendChild(div);
+    }
+  });
+}
+
+function updateStats() {
+  const entries = Object.values(data);
+  const done = entries.length;
+  const totalMin = entries.reduce((s, e) => s + (e.duration || 0), 0);
+  const hours = Math.round(totalMin / 60 * 10) / 10;
+  const streak = getCurrentStreak();
+  const typeCounts = {};
+  entries.forEach(e => { if (e.types) e.types.forEach(t => { typeCounts[t] = (typeCounts[t] || 0) + 1; }); });
+  const footer = document.getElementById('footerInner');
+  let html = '';
+  html += `<span class="footer-chip"><b>${done}</b>/${TOTAL}</span>`;
+  html += `<span class="footer-chip">🕐 <b>${hours}</b>ч</span>`;
+  html += `<span class="footer-chip">🔥 <b>${streak}</b> подряд</span>`;
+  const typeEntries = TYPES.filter(t => typeCounts[t.name]);
+  if (typeEntries.length > 0) {
+    html += '<span class="footer-sep"></span>';
+    typeEntries.forEach(t => { html += `<span class="footer-chip"><i>${t.icon}</i> <b>${typeCounts[t.name]}</b></span>`; });
+  }
+  footer.innerHTML = html;
+  updateAchievements();
+}
+
+// --- Leaderboard ---
+function loadLeaderboard() {
+  const el = document.getElementById('leaderboard');
+  if (!firebaseReady) {
+    el.innerHTML = '<div class="lb-empty">Лидерборд доступен после настройки Firebase<br><span style="font-size:12px;margin-top:8px;display:block;">Добавь свой Firebase config в код</span></div>';
+    return;
+  }
+  el.innerHTML = '<div class="lb-loading">Загрузка...</div>';
+  db.ref('leaderboard').orderByChild('done').once('value').then(snap => {
+    const users = [];
+    snap.forEach(child => { users.push(child.val()); });
+    // Sort: done desc → hours desc → types desc
+    users.sort((a, b) => {
+      if (b.done !== a.done) return b.done - a.done;
+      if (b.hours !== a.hours) return b.hours - a.hours;
+      return (b.typeList?.length || 0) - (a.typeList?.length || 0);
+    });
+    renderLeaderboard(users);
+  }).catch(() => {
+    el.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>';
+  });
+}
+
+function renderLeaderboard(users) {
+  const el = document.getElementById('leaderboard');
+  if (users.length === 0) {
+    el.innerHTML = '<div class="lb-empty">Пока никто не участвует.<br>Будь первым! 💪</div>';
+    return;
+  }
+  const medals = ['🥇', '🥈', '🥉'];
+  let html = '<table class="lb-table"><thead><tr><th>#</th><th>Участник</th><th>Дней</th><th>Часов</th><th>Типы</th></tr></thead><tbody>';
+  users.forEach((u, i) => {
+    const isMe = u.name === userName;
+    const icons = Array.isArray(u.typeList)
+      ? u.typeList.map(t => TYPE_MAP[t] || '🏷️').join(' ')
+      : (u.typeList || '—');
+    html += `<tr class="${isMe ? 'lb-row-me' : ''}">`;
+    html += `<td class="lb-rank">${medals[i] || (i + 1)}</td>`;
+    html += `<td class="lb-name">${u.name}${isMe ? ' (ты)' : ''}</td>`;
+    html += `<td class="lb-val">${u.done}</td>`;
+    html += `<td class="lb-val">${u.hours}</td>`;
+    html += `<td class="lb-val" style="font-size:16px;letter-spacing:2px">${icons}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// --- Events ---
+document.getElementById('overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// --- Init ---
+// Migrate existing users: give them a UID if they don't have one
+if (userName && !userUID) {
+  userUID = generateUID();
+  localStorage.setItem('challenge365_uid', userUID);
+}
+// Clean up old name-keyed leaderboard entry (before UID migration)
+if (userName && userUID && firebaseReady) {
+  db.ref('leaderboard/' + encodeUser(userName)).remove();
+}
+initUserBar();
+buildGrid();
+syncToFirebase();
+</script>
+</body>
+</html>
