@@ -62,6 +62,7 @@
   /* Tabs */
   .tabs {
     display: flex; gap: 4px; margin-bottom: 16px; justify-content: center;
+    flex-wrap: wrap; align-items: center;
   }
   .tab {
     padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border);
@@ -303,7 +304,17 @@
     .duration-row-label { min-width: 90px; font-size: 12px; }
     .duration-row .input { width: 80px; }
     .lb-table { font-size: 13px; }
-    .lb-table th, .lb-table td { padding: 8px 8px; }
+    .lb-table th, .lb-table td { padding: 8px 6px; }
+
+    /* Tabs + user bar mobile */
+    .tabs { gap: 6px; margin-bottom: 12px; }
+    .tab { padding: 6px 12px; font-size: 12px; }
+    .user-bar {
+      width: 100%; justify-content: center; margin-left: 0;
+      margin-top: 2px; font-size: 11px; gap: 4px;
+    }
+    .user-code { font-size: 11px; letter-spacing: 1px; padding: 2px 5px; }
+    .user-bar button { font-size: 11px; }
   }
 </style>
 </head>
