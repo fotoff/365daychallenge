@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>График Тренировок</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f8f8f6; color: #1a1a1a; min-height: 100vh; padding-bottom: 80px; }
+
+    header { text-align: center; padding: 32px 20px 20px; }
+    h1 { font-size: 1.4rem; font-weight: 500; color: #888; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .back-link { font-size: 0.78rem; color: #bbb; text-decoration: none; }
+    .back-link:hover { color: #666; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+    /* Week section */
+    .week-section { margin-bottom: 32px; }
+
+    .week-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; flex-wrap: wrap; gap: 10px;
+    }
+    .week-title-wrap { display: flex; align-items: center; gap: 10px; }
+    .week-badge {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: #aaa; background: #eeede9; border-radius: 8px; padding: 4px 10px;
+    }
+    .week-name-input {
+      border: none; background: transparent; font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 500; color: #1a1a1a; outline: none;
+      border-bottom: 1px dashed transparent; min-width: 180px; padding: 2px 4px;
+      transition: border-color 0.15s;
+    }
+    .week-name-input:hover { border-bottom-color: #ccc; }
+    .week-name-input:focus { border-bottom-color: #999; }
+
+    .copy-wrap {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.82rem; color: #999;
+    }
+    .copy-select {
+      border: 1px solid #e0e0da; border-radius: 10px; padding: 5px 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; background: white;
+      cursor: pointer; outline: none; color: #1a1a1a;
+    }
+    .icon-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e0e0da;
+      background: white; cursor: pointer; font-size: 0.9rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; color: #555;
+    }
+    .icon-btn:hover { background: #f0f0ec; border-color: #ccc; }
+    .icon-btn.danger:hover { background: #fff0f0; border-color: #f8c0c0; color: #e55; }
+
+    /* Table */
+    .week-table { background: white; border-radius: 20px; border: 1px solid #e8e8e3; overflow: hidden; }
+
+    .table-header {
+      display: grid;
+      grid-template-columns: 52px 155px 1fr 130px 175px 36px;
+      background: #fafaf8; border-bottom: 1px solid #e8e8e3;
+    }
+    .th {
+      padding: 10px 14px; font-size: 0.62rem; font-weight: 700;
+      color: #bbb; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+
+    .day-row {
+      display: grid;
+      grid-template-columns: 52px 155px 1fr 130px 175px 36px;
+      border-bottom: 1px solid #f0f0ec; align-items: start;
+      transition: background 0.1s;
+    }
+    .day-row:last-of-type { border-bottom: none; }
+    .day-row.is-rest { background: #fdfcfb; }
+
+    .cell { padding: 10px 14px; }
+
+    .day-name {
+      font-weight: 600; font-size: 0.9rem; padding-top: 14px;
+      color: #1a1a1a;
+    }
+    .day-name.weekend { color: #bbb; }
+
+    /* Type selector */
+    .type-cell { display: flex; align-items: center; gap: 6px; padding-top: 12px; }
+    .type-icon { font-size: 1.05rem; min-width: 22px; line-height: 1; }
+    .type-select {
+      border: none; background: transparent; font-family: 'Inter', sans-serif;
+      font-size: 0.83rem; color: #1a1a1a; outline: none; cursor: pointer;
+      width: 100%; min-width: 0;
+    }
+
+    /* Inputs */
+    .field-input {
+      width: 100%; border: none; background: transparent;
+      font-family: 'Inter', sans-serif; font-size: 0.83rem; color: #1a1a1a;
+      outline: none; resize: none; padding: 0; line-height: 1.45;
+    }
+    .field-input::placeholder { color: #d0d0cc; }
+    .cell-ta { padding-top: 12px; }
+
+    /* Description */
+    .desc-btn {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 1px solid #e8e8e3; background: transparent;
+      cursor: pointer; font-size: 0.7rem; display: flex; align-items: center;
+      justify-content: center; margin-top: 10px; color: #bbb;
+      transition: all 0.15s;
+    }
+    .desc-btn:hover { background: #f0f0ec; color: #555; }
+    .desc-btn.has-desc { background: #f0f0ec; color: #555; border-color: #d0d0cc; }
+
+    .desc-row { display: none; padding: 0 14px 12px 80px; }
+    .desc-row.open { display: block; }
+    .desc-textarea {
+      width: 100%; border: none; background: #f6f6f3; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; color: #1a1a1a;
+      outline: none; resize: none; padding: 8px 12px; line-height: 1.5; min-height: 54px;
+    }
+    .desc-textarea::placeholder { color: #ccc; }
+
+    /* Add week */
+    .add-week-btn {
+      display: flex; align-items: center; gap: 8px; padding: 10px 22px;
+      border-radius: 20px; border: 1.5px dashed #d0d0cc; background: transparent;
+      cursor: pointer; font-family: 'Inter', sans-serif; font-size: 0.85rem;
+      color: #aaa; transition: all 0.15s; margin: 0 auto 24px;
+    }
+    .add-week-btn:hover { border-color: #999; color: #1a1a1a; background: white; }
+
+    /* Footer */
+    .footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(248,248,246,0.95); backdrop-filter: blur(12px);
+      border-top: 1px solid #e8e8e3;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 24px;
+    }
+    .footer-icons { display: flex; gap: 8px; }
+    .footer-btn {
+      width: 36px; height: 36px; border-radius: 10px; border: 1px solid #e0e0da;
+      background: white; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; text-decoration: none; color: #555;
+    }
+    .footer-btn:hover { background: #f0f0ec; }
+    .autosave { font-size: 0.72rem; color: #bbb; }
+    .autosave.saved { color: #88bb88; }
+
+    /* Tooltip */
+    [title] { position: relative; }
+
+    @media (max-width: 720px) {
+      .table-header { display: none; }
+      .day-row {
+        display: block; padding: 14px 16px; border-bottom: 1px solid #f0f0ec;
+      }
+      .day-row .cell { padding: 3px 0; }
+      .day-name { padding-top: 0; margin-bottom: 6px; }
+      .type-cell { padding-top: 0; }
+      .cell-ta { padding-top: 4px; }
+      .desc-btn { margin-top: 6px; }
+      .desc-row { padding: 0 0 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 График Тренировок</h1>
+  <a class="back-link" href="/365daychallenge/">← 365-дневный челлендж</a>
+</header>
+
+<div class="container">
+  <div id="weeks-container"></div>
+
+  <div style="text-align:center;">
+    <button class="add-week-btn" onclick="addWeek()">＋ Добавить неделю</button>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-icons">
+    <button class="footer-btn" onclick="exportData()" title="Сохранить в файл">💾</button>
+    <button class="footer-btn" onclick="importData()" title="Загрузить из файла">📂</button>
+  </div>
+  <span class="autosave" id="autosave-label">автосохранение</span>
+</div>
+
+<script>
+const DAYS = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+const WEEKEND_IDX = [5, 6];
+const DEFAULT_REST = [2, 6]; // СР, ВС — по умолчанию отдых
+
+const TYPES = [
+  { v: '',         icon: '—',  label: 'Не задано' },
+  { v: 'rest',     icon: '😴', label: 'Отдых' },
+  { v: 'cardio',   icon: '❤️', label: 'Кардио' },
+  { v: 'strength', icon: '🏋️', label: 'Силовые / Гиря' },
+  { v: 'run',      icon: '🏃', label: 'Бег' },
+  { v: 'box',      icon: '🥊', label: 'Бокс' },
+  { v: 'swim',     icon: '🏊', label: 'Плавание' },
+  { v: 'yoga',     icon: '🧘', label: 'Йога' },
+  { v: 'bike',     icon: '🚴', label: 'Велосипед' },
+  { v: 'raft',     icon: '🚣', label: 'Сплав' },
+  { v: 'fish',     icon: '🎣', label: 'Рыбалка' },
+  { v: 'moto',     icon: '🏍️', label: 'Мото' },
+  { v: 'walk',     icon: '🚶', label: 'Прогулка / Активность' },
+  { v: 'ski',      icon: '⛷️', label: 'Горные лыжи' },
+  { v: 'gym',      icon: '🤸', label: 'Гимнастика / ОФП' },
+];
+
+function getIcon(v) {
+  const t = TYPES.find(t => t.v === v);
+  return t ? t.icon : '—';
+}
+
+function makeEmptyDay(dayIdx) {
+  return {
+    type: DEFAULT_REST.includes(dayIdx) ? 'rest' : '',
+    what: '',
+    duration: '',
+    intensity: '',
+    description: ''
+  };
+}
+
+function makeEmptyWeek(num) {
+  return {
+    name: `Неделя ${num}`,
+    days: DAYS.map((_, i) => makeEmptyDay(i))
+  };
+}
+
+let schedule = { weeks: [] };
+
+// ── Increase numbers in a string by pct% ──
+function increaseDuration(str, pct) {
+  if (!pct || !str) return str;
+  return str.replace(/\d+(\.\d+)?/g, n => Math.round(Number(n) * (1 + pct / 100)));
+}
+
+// ── Copy week ──
+function copyWeek(weekIdx) {
+  const pct = parseInt(document.getElementById('pct-' + weekIdx).value) || 0;
+  const src = schedule.weeks[weekIdx];
+  const newWeek = JSON.parse(JSON.stringify(src));
+  newWeek.name = `Неделя ${schedule.weeks.length + 1}`;
+  newWeek.days = newWeek.days.map(d => ({
+    ...d,
+    duration: increaseDuration(d.duration, pct),
+    intensity: d.intensity   // intensity stays same by default
+  }));
+  schedule.weeks.push(newWeek);
+  save();
+  render();
+  setTimeout(() => {
+    const all = document.querySelectorAll('.week-section');
+    all[all.length - 1].scrollIntoView({ behavior: 'smooth' });
+  }, 80);
+}
+
+function addWeek() {
+  schedule.weeks.push(makeEmptyWeek(schedule.weeks.length + 1));
+  save();
+  render();
+  setTimeout(() => {
+    const all = document.querySelectorAll('.week-section');
+    all[all.length - 1].scrollIntoView({ behavior: 'smooth' });
+  }, 80);
+}
+
+function deleteWeek(idx) {
+  if (schedule.weeks.length <= 1) return;
+  if (!confirm('Удалить неделю «' + schedule.weeks[idx].name + '»?')) return;
+  schedule.weeks.splice(idx, 1);
+  save();
+  render();
+}
+
+function updateField(wi, di, field, value) {
+  schedule.weeks[wi].days[di][field] = value;
+  save();
+}
+
+function updateWeekName(wi, value) {
+  schedule.weeks[wi].name = value;
+  save();
+}
+
+function updateType(wi, di, value) {
+  schedule.weeks[wi].days[di].type = value;
+  document.getElementById(`icon-${wi}-${di}`).textContent = getIcon(value);
+  document.getElementById(`row-${wi}-${di}`).classList.toggle('is-rest', value === 'rest');
+  save();
+}
+
+function toggleDesc(wi, di) {
+  const row = document.getElementById(`desc-${wi}-${di}`);
+  const btn = document.getElementById(`descbtn-${wi}-${di}`);
+  const open = row.classList.toggle('open');
+  btn.textContent = open ? '▲' : '▼';
+  if (open) document.getElementById(`desctxt-${wi}-${di}`).focus();
+}
+
+// ── Render ──
+function renderWeek(week, wi) {
+  const typeOpts = (selected) =>
+    TYPES.map(t => `<option value="${t.v}" ${selected === t.v ? 'selected' : ''}>${t.icon} ${t.label}</option>`).join('');
+
+  const rows = week.days.map((day, di) => {
+    const isWeekend = WEEKEND_IDX.includes(di);
+    const isRest = day.type === 'rest';
+    const hasDesc = day.description.trim().length > 0;
+    const icon = getIcon(day.type);
+
+    return `
+      <div class="day-row ${isRest ? 'is-rest' : ''}" id="row-${wi}-${di}">
+        <div class="cell day-name ${isWeekend ? 'weekend' : ''}">${DAYS[di]}</div>
+        <div class="cell type-cell">
+          <span class="type-icon" id="icon-${wi}-${di}">${icon}</span>
+          <select class="type-select" onchange="updateType(${wi},${di},this.value)">${typeOpts(day.type)}</select>
+        </div>
+        <div class="cell cell-ta">
+          <textarea class="field-input" rows="2"
+            placeholder="Что делать..."
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+            onchange="updateField(${wi},${di},'what',this.value)"
+          >${escHtml(day.what)}</textarea>
+        </div>
+        <div class="cell cell-ta">
+          <input class="field-input" type="text" placeholder="30–40 мин"
+            value="${escHtml(day.duration)}"
+            onchange="updateField(${wi},${di},'duration',this.value)">
+        </div>
+        <div class="cell cell-ta">
+          <input class="field-input" type="text" placeholder="Пульс 110–125"
+            value="${escHtml(day.intensity)}"
+            onchange="updateField(${wi},${di},'intensity',this.value)">
+        </div>
+        <div class="cell" style="display:flex;align-items:flex-start;padding-top:10px;">
+          <button class="desc-btn ${hasDesc ? 'has-desc' : ''}" id="descbtn-${wi}-${di}"
+            onclick="toggleDesc(${wi},${di})" title="Подробное описание">${hasDesc ? '▲' : '▼'}</button>
+        </div>
+      </div>
+      <div class="desc-row ${hasDesc ? 'open' : ''}" id="desc-${wi}-${di}">
+        <textarea class="desc-textarea" id="desctxt-${wi}-${di}" rows="2"
+          placeholder="Подробное описание, упражнения, заметки..."
+          onchange="updateField(${wi},${di},'description',this.value)"
+        >${escHtml(day.description)}</textarea>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="week-section" id="week-${wi}">
+      <div class="week-controls">
+        <div class="week-title-wrap">
+          <span class="week-badge">${wi + 1}</span>
+          <input class="week-name-input" type="text" value="${escHtml(week.name)}"
+            placeholder="Название недели..."
+            onchange="updateWeekName(${wi}, this.value)">
+        </div>
+        <div class="copy-wrap">
+          📋 Скопировать неделю с ростом нагрузки
+          <select class="copy-select" id="pct-${wi}">
+            <option value="0">+0%</option>
+            <option value="5">+5%</option>
+            <option value="10" selected>+10%</option>
+            <option value="15">+15%</option>
+            <option value="20">+20%</option>
+          </select>
+          <button class="icon-btn" onclick="copyWeek(${wi})" title="Скопировать неделю">→</button>
+          ${schedule.weeks.length > 1
+            ? `<button class="icon-btn danger" onclick="deleteWeek(${wi})" title="Удалить неделю">✕</button>`
+            : ''}
+        </div>
+      </div>
+
+      <div class="week-table">
+        <div class="table-header">
+          <div class="th">День</div>
+          <div class="th">Тип</div>
+          <div class="th">Что делать</div>
+          <div class="th">Длительность</div>
+          <div class="th">Интенсивность</div>
+          <div class="th"></div>
+        </div>
+        ${rows}
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  document.getElementById('weeks-container').innerHTML =
+    schedule.weeks.map((w, i) => renderWeek(w, i)).join('');
+  // Auto-resize textareas
+  document.querySelectorAll('textarea.field-input').forEach(ta => {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  });
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Persist ──
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem('trainingSchedule_v2', JSON.stringify(schedule));
+    const lbl = document.getElementById('autosave-label');
+    if (lbl) { lbl.textContent = 'сохранено ✓'; lbl.className = 'autosave saved'; }
+    setTimeout(() => { if (lbl) { lbl.textContent = 'автосохранение'; lbl.className = 'autosave'; } }, 1800);
+  }, 400);
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(schedule, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'training-plan.json';
+  a.click();
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        schedule = JSON.parse(ev.target.result);
+        save(); render();
+      } catch { alert('Ошибка чтения файла'); }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+// ── Init ──
+const saved = localStorage.getItem('trainingSchedule_v2');
+if (saved) {
+  try { schedule = JSON.parse(saved); } catch {}
+}
+if (!schedule.weeks || !schedule.weeks.length) {
+  schedule.weeks = [makeEmptyWeek(1)];
+  save();
+}
+render();
+</script>
+</body>
+</html>
