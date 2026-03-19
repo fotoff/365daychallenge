@@ -463,13 +463,65 @@ function importData() {
   input.click();
 }
 
+// ── Default 4-week plan from Excel ──
+const DEFAULT_PLAN = { weeks: [
+  {
+    name: "Неделя 1 — Адаптация",
+    days: [
+      { type: 'cardio',   what: 'Ходьба / Эллипс',                                              duration: '30 мин',  intensity: 'Пульс 110–125',  description: '' },
+      { type: 'strength', what: 'Махи 3×10, Присед с гирей 3×8, Тяга 3×10, Планка 3×20–30 сек', duration: '30 мин',  intensity: 'Легко',           description: 'Гиря 12 кг' },
+      { type: 'rest',     what: 'Ходьба 5–8 тыс. шагов',                                         duration: '',        intensity: '',                description: '' },
+      { type: 'box',      what: 'Техника + лёгкая работа с мешком (без силовых ударов)',          duration: '30 мин',  intensity: 'Легко',           description: '' },
+      { type: 'cardio',   what: 'Ходьба / Эллипс',                                              duration: '30 мин',  intensity: 'Пульс 110–125',  description: '' },
+      { type: 'walk',     what: 'Прогулка / Растяжка',                                           duration: '20 мин',  intensity: 'Очень легко',    description: '' },
+      { type: 'rest',     what: '',                                                               duration: '',        intensity: '',                description: '' },
+    ]
+  },
+  {
+    name: "Неделя 2 — Втягивание",
+    days: [
+      { type: 'cardio',   what: 'Ходьба / Эллипс',                                                    duration: '33 мин',  intensity: 'Пульс 115–125',   description: '' },
+      { type: 'strength', what: 'Махи 4×10, Присед с гирей 3×10, Тяга 3×12, Планка 3×25–30 сек',      duration: '33 мин',  intensity: 'Легко',            description: 'Гиря 12–16 кг' },
+      { type: 'rest',     what: 'Ходьба 5–8 тыс. шагов',                                              duration: '',        intensity: '',                 description: '' },
+      { type: 'box',      what: 'Техника + лёгкая работа с мешком',                                   duration: '33 мин',  intensity: 'Легко / Средне',   description: '' },
+      { type: 'cardio',   what: 'Ходьба / Эллипс',                                                    duration: '33 мин',  intensity: 'Пульс 115–125',   description: '' },
+      { type: 'walk',     what: 'Прогулка / Мобилити',                                               duration: '22 мин',  intensity: 'Очень легко',     description: '' },
+      { type: 'rest',     what: '',                                                                    duration: '',        intensity: '',                 description: '' },
+    ]
+  },
+  {
+    name: "Неделя 3 — Развитие",
+    days: [
+      { type: 'cardio',   what: 'Стабильное кардио',                                                  duration: '36 мин',  intensity: 'Пульс 115–130',   description: '' },
+      { type: 'strength', what: 'Махи 4×12, Присед с гирей 4×10, Тяга 4×12, Планка 3×30–35 сек',     duration: '36 мин',  intensity: 'Средне',           description: 'Гиря 16 кг' },
+      { type: 'box',      what: 'Работа с мешком + техника',                                          duration: '40 мин',  intensity: 'Средне',           description: '' },
+      { type: 'rest',     what: 'Ходьба 5–8 тыс. шагов',                                             duration: '',        intensity: '',                 description: '' },
+      { type: 'run',      what: 'Кардио + интервалы: 5×(1 мин быстро + 2 мин спокойно)',             duration: '36 мин',  intensity: 'Пульс до 140',    description: '' },
+      { type: 'box',      what: 'Лёгкая сессия',                                                     duration: '40 мин',  intensity: 'Легко',            description: '' },
+      { type: 'rest',     what: '',                                                                    duration: '',        intensity: '',                 description: '' },
+    ]
+  },
+  {
+    name: "Неделя 4 — Нагрузка",
+    days: [
+      { type: 'cardio',   what: 'Стабильное кардио',                                                  duration: '40 мин',  intensity: 'Пульс 120–130',   description: '' },
+      { type: 'strength', what: 'Махи 5×12, Присед с гирей 4×12, Тяга 4×12, Планка 3×35–40 сек',    duration: '40 мин',  intensity: 'Средне',           description: 'Гиря 16–20 кг' },
+      { type: 'box',      what: 'Техника + работа с мешком',                                         duration: '45 мин',  intensity: 'Средне',           description: '' },
+      { type: 'rest',     what: 'Прогулка / Мобилити',                                               duration: '',        intensity: '',                 description: '' },
+      { type: 'run',      what: 'Кардио + интервалы: 6×(1 мин быстро + 2 мин спокойно)',            duration: '40 мин',  intensity: 'Пульс до 140',    description: '' },
+      { type: 'box',      what: 'Лёгкая / техническая сессия',                                       duration: '45 мин',  intensity: 'Легко',            description: '' },
+      { type: 'rest',     what: '',                                                                    duration: '',        intensity: '',                 description: '' },
+    ]
+  }
+]};
+
 // ── Init ──
 const saved = localStorage.getItem('trainingSchedule_v2');
 if (saved) {
   try { schedule = JSON.parse(saved); } catch {}
 }
 if (!schedule.weeks || !schedule.weeks.length) {
-  schedule.weeks = [makeEmptyWeek(1)];
+  schedule = JSON.parse(JSON.stringify(DEFAULT_PLAN));
   save();
 }
 render();
