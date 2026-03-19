@@ -591,8 +591,7 @@ function submitName() {
   document.getElementById('userNameDisplay').textContent = userName;
   document.getElementById('userCodeDisplay').textContent = userUID;
   updateUserBar('leaderboard');
-  syncToFirebase();
-  loadLeaderboard();
+  syncToFirebase(loadLeaderboard);
 }
 
 function connectWithCode() {
@@ -673,7 +672,7 @@ function switchTab(tab) {
       document.getElementById('joinOverlay').classList.add('active');
       setTimeout(() => document.getElementById('nameInput').focus(), 100);
     } else {
-      loadLeaderboard();
+      syncToFirebase(loadLeaderboard);
     }
   }
 }
@@ -698,8 +697,8 @@ function calcStats(d) {
   return { done, hours, typeList: [...typeSet] };
 }
 
-function syncToFirebase() {
-  if (!firebaseReady || !userName || !userUID) return;
+function syncToFirebase(callback) {
+  if (!firebaseReady || !userName || !userUID) { if (callback) callback(); return; }
   const stats = calcStats(data);
   db.ref('leaderboard/' + userUID).set({
     name: userName,
@@ -708,7 +707,8 @@ function syncToFirebase() {
     typeList: stats.typeList,
     cells: data,
     updated: Date.now()
-  });
+  }).then(() => { if (callback) callback(); })
+    .catch(() => { if (callback) callback(); });
 }
 
 // --- Export / Import ---
