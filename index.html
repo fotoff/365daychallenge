@@ -385,6 +385,7 @@
   <div class="footer-inner">
     <div class="footer-stats" id="footerInner"></div>
     <div class="footer-actions">
+      <a href="/365daychallenge/plan.html" data-tip="График тренировок">📋</a>
       <button onclick="exportData()" data-tip="Сохранить в файл">💾</button>
       <button onclick="document.getElementById('importFile').click()" data-tip="Загрузить из файла">📂</button>
       <a href="https://github.com/fotoff/365daychallenge" target="_blank" data-tip="GitHub">
@@ -476,6 +477,8 @@ const TYPES = [
   { name: 'Лыжи/Сноуборд', icon: '⛷️' },
   { name: 'Мото',         icon: '🏍️' },
   { name: 'Сплав',        icon: '🛶' },
+  { name: 'Баня/Сауна',  icon: '🧖' },
+  { name: '«Дегустация»', icon: '🍷' },
   { name: 'Другое',       icon: '🏷️' },
 ];
 
@@ -538,6 +541,11 @@ const ACHIEVEMENTS = [
   { count: 30,  type: 'Йога', icon: '🌸', label: '30 йоги' },
   { count: 90,  type: 'Йога', icon: '☮️', label: '90 йоги' },
   { count: 180, type: 'Йога', icon: '🕉️', label: '180 йоги' },
+  // Дегустация
+  { count: 9,  type: '«Дегустация»', icon: '🍷', label: '9 дегустаций' },
+  { count: 18, type: '«Дегустация»', icon: '🍾', label: '18 дегустаций' },
+  { count: 27, type: '«Дегустация»', icon: '🥂', label: '27 дегустаций' },
+  { count: 36, type: '«Дегустация»', icon: '👑', label: '36 дегустаций' },
 ];
 
 let data = JSON.parse(localStorage.getItem('challenge365') || '{}');
@@ -546,6 +554,7 @@ let userUID = localStorage.getItem('challenge365_uid') || '';
 let currentCell = null;
 let currentRating = 0;
 let selectedTypes = new Set();
+let challengeStartDate = localStorage.getItem('challenge365_startDate') || null;
 
 function generateUID() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -591,7 +600,8 @@ function submitName() {
   document.getElementById('userNameDisplay').textContent = userName;
   document.getElementById('userCodeDisplay').textContent = userUID;
   updateUserBar('leaderboard');
-  syncToFirebase(loadLeaderboard);
+  syncToFirebase();
+  loadLeaderboard();
 }
 
 function connectWithCode() {
@@ -672,7 +682,8 @@ function switchTab(tab) {
       document.getElementById('joinOverlay').classList.add('active');
       setTimeout(() => document.getElementById('nameInput').focus(), 100);
     } else {
-      syncToFirebase(loadLeaderboard);
+      syncToFirebase(); // sync in background
+      loadLeaderboard(); // load immediately, don't wait for sync
     }
   }
 }
@@ -697,17 +708,79 @@ function calcStats(d) {
   return { done, hours, typeList: [...typeSet] };
 }
 
+function loadFromFirebase() {
+  if (!firebaseReady || !userUID) { buildGrid(); return; }
+  db.ref('leaderboard/' + userUID).once('value').then(snap => {
+    const rec = snap.val();
+    if (rec) {
+      if (rec.startDate) {
+        challengeStartDate = rec.startDate;
+        localStorage.setItem('challenge365_startDate', rec.startDate);
+      }
+      if (rec.cells && rec.updated) {
+        const localUpdated = parseInt(localStorage.getItem('challenge365_updated') || '0');
+        if (rec.updated >= localUpdated) {
+          const cells = Array.isArray(rec.cells)
+            ? rec.cells.reduce((acc, v, i) => { if (v) acc[i] = v; return acc; }, {})
+            : rec.cells;
+          data = cells;
+          persist();
+          localStorage.setItem('challenge365_updated', String(rec.updated));
+        } else {
+          syncToFirebase();
+        }
+      } else {
+        syncToFirebase();
+      }
+    } else {
+      syncToFirebase();
+    }
+    buildGrid();
+  }).catch(() => { syncToFirebase(); buildGrid(); });
+}
+
+function saveStartDate(dateStr) {
+  challengeStartDate = dateStr;
+  localStorage.setItem('challenge365_startDate', dateStr);
+  if (firebaseReady && userUID) {
+    db.ref('leaderboard/' + userUID + '/startDate').set(dateStr);
+  }
+}
+
+function sanitizeKey(k) {
+  return String(k).replace(/[.#$\/\[\]]/g, '_');
+}
+function sanitizeCells(cells) {
+  const result = {};
+  Object.entries(cells || {}).forEach(([day, entry]) => {
+    if (!entry) { result[day] = entry; return; }
+    const s = Object.assign({}, entry);
+    if (s.durations) {
+      const d = {};
+      Object.entries(s.durations).forEach(([k, v]) => { d[sanitizeKey(k)] = v; });
+      s.durations = d;
+    }
+    result[day] = s;
+  });
+  return result;
+}
+
 function syncToFirebase(callback) {
   if (!firebaseReady || !userName || !userUID) { if (callback) callback(); return; }
   const stats = calcStats(data);
-  db.ref('leaderboard/' + userUID).set({
+  const now = Date.now();
+  localStorage.setItem('challenge365_updated', String(now));
+  const payload = {
     name: userName,
     done: stats.done,
     hours: stats.hours,
     typeList: stats.typeList,
-    cells: data,
-    updated: Date.now()
-  }).then(() => { if (callback) callback(); })
+    cells: sanitizeCells(data),
+    updated: now
+  };
+  if (challengeStartDate) payload.startDate = challengeStartDate;
+  db.ref('leaderboard/' + userUID).set(payload)
+    .then(() => { if (callback) callback(); })
     .catch(() => { if (callback) callback(); });
 }
 
@@ -744,6 +817,10 @@ function importData(e) {
 function buildGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
+
+  const startDate = challengeStartDate ? new Date(challengeStartDate + 'T00:00:00') : null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
   for (let i = 1; i <= TOTAL; i++) {
     const cell = document.createElement('div');
     cell.className = 'cell';
@@ -769,6 +846,11 @@ function buildGrid() {
       if ((entry.duration || 0) < 30) cell.classList.add('short');
       cell.textContent = '✓';
     } else {
+      if (startDate) {
+        const cellDate = new Date(startDate);
+        cellDate.setDate(startDate.getDate() + i - 1);
+        if (cellDate < today) cell.classList.add('missed');
+      }
       cell.textContent = i;
     }
     cell.addEventListener('click', () => openModal(i));
@@ -874,6 +956,9 @@ function saveEntry() {
         alert('Можно заполнить только 1 ячейку в день 🙅');
         return;
       }
+      if (!challengeStartDate) {
+        saveStartDate(new Date().toISOString().split('T')[0]);
+      }
     }
     const createdAt = data[currentCell]?.createdAt || Date.now();
     data[currentCell] = { types, durations, duration: totalDuration, rating: currentRating, comment, createdAt };
@@ -944,7 +1029,16 @@ function loadLeaderboard() {
     return;
   }
   el.innerHTML = '<div class="lb-loading">Загрузка...</div>';
-  db.ref('leaderboard').orderByChild('done').once('value').then(snap => {
+  let settled = false;
+  const timeout = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    el.innerHTML = '<div class="lb-empty">Не удалось загрузить.<br><span style="font-size:12px;margin-top:6px;display:block;">Проверь подключение к интернету</span></div>';
+  }, 10000);
+  db.ref('leaderboard').once('value').then(snap => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
     const users = [];
     snap.forEach(child => { users.push(child.val()); });
     // Sort: done desc → hours desc → types desc
@@ -955,6 +1049,9 @@ function loadLeaderboard() {
     });
     renderLeaderboard(users);
   }).catch(() => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeout);
     el.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>';
   });
 }
@@ -1000,7 +1097,7 @@ if (userName && userUID && firebaseReady) {
 }
 initUserBar();
 buildGrid();
-syncToFirebase();
+loadFromFirebase();
 </script>
 </body>
 </html>
