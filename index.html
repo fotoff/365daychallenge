@@ -613,10 +613,17 @@ function connectWithCode() {
     if (!remote) { alert('Код не найден. Проверь и попробуй снова.'); return; }
     userUID = code;
     userName = remote.name;
-    data = remote.cells || {};
+    const cells = Array.isArray(remote.cells)
+      ? remote.cells.reduce((acc, v, i) => { if (v) acc[i] = v; return acc; }, {})
+      : (remote.cells || {});
+    data = cells;
     localStorage.setItem('challenge365_uid', userUID);
     localStorage.setItem('challenge365_name', userName);
     localStorage.setItem('challenge365', JSON.stringify(data));
+    if (remote.startDate) {
+      challengeStartDate = remote.startDate;
+      localStorage.setItem('challenge365_startDate', remote.startDate);
+    }
     closeJoinOverlay();
     document.getElementById('userNameDisplay').textContent = userName;
     document.getElementById('userCodeDisplay').textContent = userUID;
@@ -813,12 +820,29 @@ function importData(e) {
   e.target.value = '';
 }
 
+// Если challengeStartDate не задан, но есть заполненные дни — вывести его
+// из самой ранней ячейки с createdAt: startDate = createdAt - (day - 1) дней.
+function deriveStartDate() {
+  let earliest = null;
+  Object.entries(data).forEach(([day, entry]) => {
+    if (!entry || !entry.createdAt) return;
+    const dayNum = parseInt(day, 10);
+    if (!dayNum) return;
+    const candidate = new Date(entry.createdAt);
+    candidate.setHours(0, 0, 0, 0);
+    candidate.setDate(candidate.getDate() - (dayNum - 1));
+    if (!earliest || candidate < earliest) earliest = candidate;
+  });
+  return earliest;
+}
+
 // --- Grid ---
 function buildGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
 
-  const startDate = challengeStartDate ? new Date(challengeStartDate + 'T00:00:00') : null;
+  let startDate = challengeStartDate ? new Date(challengeStartDate + 'T00:00:00') : null;
+  if (!startDate) startDate = deriveStartDate();
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   for (let i = 1; i <= TOTAL; i++) {
@@ -957,7 +981,11 @@ function saveEntry() {
         return;
       }
       if (!challengeStartDate) {
-        saveStartDate(new Date().toISOString().split('T')[0]);
+        const derived = deriveStartDate();
+        const dateStr = derived
+          ? `${derived.getFullYear()}-${String(derived.getMonth()+1).padStart(2,'0')}-${String(derived.getDate()).padStart(2,'0')}`
+          : new Date().toISOString().split('T')[0];
+        saveStartDate(dateStr);
       }
     }
     const createdAt = data[currentCell]?.createdAt || Date.now();
