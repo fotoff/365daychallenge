@@ -836,13 +836,26 @@ function deriveStartDate() {
   return earliest;
 }
 
+function fmtLocalDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 // --- Grid ---
 function buildGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
 
-  let startDate = challengeStartDate ? new Date(challengeStartDate + 'T00:00:00') : null;
-  if (!startDate) startDate = deriveStartDate();
+  // createdAt ячеек — ground truth. Если stored startDate позже, чем выведенный
+  // из самой ранней ячейки (последствие старого бага saveStartDate(today)),
+  // лечим: используем derived и пишем обратно в Firebase/localStorage.
+  const stored = challengeStartDate ? new Date(challengeStartDate + 'T00:00:00') : null;
+  const derived = deriveStartDate();
+  let startDate = stored;
+  if (derived && (!stored || derived < stored)) {
+    startDate = derived;
+    const fixed = fmtLocalDate(derived);
+    if (fixed !== challengeStartDate) saveStartDate(fixed);
+  }
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   for (let i = 1; i <= TOTAL; i++) {
@@ -982,10 +995,7 @@ function saveEntry() {
       }
       if (!challengeStartDate) {
         const derived = deriveStartDate();
-        const dateStr = derived
-          ? `${derived.getFullYear()}-${String(derived.getMonth()+1).padStart(2,'0')}-${String(derived.getDate()).padStart(2,'0')}`
-          : new Date().toISOString().split('T')[0];
-        saveStartDate(dateStr);
+        saveStartDate(fmtLocalDate(derived || new Date()));
       }
     }
     const createdAt = data[currentCell]?.createdAt || Date.now();
