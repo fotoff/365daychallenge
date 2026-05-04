@@ -905,13 +905,13 @@ function renderDurations() {
   if (types.length === 0) {
     const input = document.createElement('input');
     input.type = 'number'; input.className = 'input'; input.placeholder = '60';
-    input.min = 0; input.max = 600; input.id = 'durationSingle';
+    input.min = 0; input.max = 2880; input.id = 'durationSingle';
     input.value = entry && entry.duration ? entry.duration : '';
     container.appendChild(input);
   } else if (types.length === 1) {
     const input = document.createElement('input');
     input.type = 'number'; input.className = 'input'; input.placeholder = '60';
-    input.min = 0; input.max = 600; input.dataset.type = types[0];
+    input.min = 0; input.max = 2880; input.dataset.type = types[0];
     const dur = entry && entry.durations && entry.durations[types[0]] ? entry.durations[types[0]] : (entry && entry.duration ? entry.duration : '');
     input.value = dur;
     container.appendChild(input);
@@ -923,7 +923,7 @@ function renderDurations() {
       label.innerHTML = `<i>${TYPE_MAP[t]||''}</i> ${t}`;
       const input = document.createElement('input');
       input.type = 'number'; input.className = 'input'; input.placeholder = '0';
-      input.min = 0; input.max = 600; input.dataset.type = t;
+      input.min = 0; input.max = 2880; input.dataset.type = t;
       input.value = entry && entry.durations && entry.durations[t] ? entry.durations[t] : '';
       const unit = document.createElement('span'); unit.className = 'duration-unit'; unit.textContent = 'мин';
       row.appendChild(label); row.appendChild(input); row.appendChild(unit);
@@ -986,17 +986,9 @@ function saveEntry() {
     delete data[currentCell];
   } else {
     const isNew = !data[currentCell];
-    if (isNew) {
-      const today = new Date().toDateString();
-      const filledToday = Object.values(data).filter(e => e.createdAt && new Date(e.createdAt).toDateString() === today).length;
-      if (filledToday >= 1) {
-        alert('Можно заполнить только 1 ячейку в день 🙅');
-        return;
-      }
-      if (!challengeStartDate) {
-        const derived = deriveStartDate();
-        saveStartDate(fmtLocalDate(derived || new Date()));
-      }
+    if (isNew && !challengeStartDate) {
+      const derived = deriveStartDate();
+      saveStartDate(fmtLocalDate(derived || new Date()));
     }
     const createdAt = data[currentCell]?.createdAt || Date.now();
     data[currentCell] = { types, durations, duration: totalDuration, rating: currentRating, comment, createdAt };
