@@ -1059,33 +1059,50 @@ function loadLeaderboard() {
     return;
   }
   el.innerHTML = '<div class="lb-loading">Загрузка...</div>';
-  let settled = false;
+  let done = false;
+  const showError = (msg) => {
+    if (done) return;
+    done = true;
+    el.innerHTML = `<div class="lb-empty">${msg}</div>`;
+  };
   const timeout = setTimeout(() => {
-    if (settled) return;
-    settled = true;
-    el.innerHTML = '<div class="lb-empty">Не удалось загрузить.<br><span style="font-size:12px;margin-top:6px;display:block;">Проверь подключение к интернету</span></div>';
+    showError('Не удалось загрузить.<br><span style="font-size:12px;margin-top:6px;display:block;">Проверь подключение к интернету</span>');
   }, 10000);
   db.ref('leaderboard').once('value').then(snap => {
-    if (settled) return;
-    settled = true;
     clearTimeout(timeout);
-    const users = [];
-    snap.forEach(child => { users.push(child.val()); });
-    // Sort: done desc → hours desc → types desc
-    users.sort((a, b) => {
-      if (b.done !== a.done) return b.done - a.done;
-      if (b.hours !== a.hours) return b.hours - a.hours;
-      return (b.typeList?.length || 0) - (a.typeList?.length || 0);
-    });
-    renderLeaderboard(users);
-  }).catch(() => {
-    if (settled) return;
-    settled = true;
+    if (done) return;
+    try {
+      const users = [];
+      snap.forEach(child => {
+        const v = child.val();
+        if (v && typeof v === 'object' && v.name) users.push(v);
+      });
+      // Sort: done desc → hours desc → types desc (с защитой от undefined)
+      users.sort((a, b) => {
+        const dDone = (b.done || 0) - (a.done || 0);
+        if (dDone) return dDone;
+        const dHours = (b.hours || 0) - (a.hours || 0);
+        if (dHours) return dHours;
+        return ((b.typeList || []).length) - ((a.typeList || []).length);
+      });
+      done = true;
+      renderLeaderboard(users);
+    } catch (e) {
+      console.error('Leaderboard render failed:', e);
+      showError('Ошибка отрисовки: ' + (e && e.message || e));
+    }
+  }).catch((err) => {
     clearTimeout(timeout);
-    el.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>';
+    console.error('Leaderboard fetch failed:', err);
+    showError('Ошибка загрузки');
   });
 }
 
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 function renderLeaderboard(users) {
   const el = document.getElementById('leaderboard');
   if (users.length === 0) {
@@ -1095,15 +1112,16 @@ function renderLeaderboard(users) {
   const medals = ['🥇', '🥈', '🥉'];
   let html = '<table class="lb-table"><thead><tr><th>#</th><th>Участник</th><th>Дней</th><th>Часов</th><th>Типы</th></tr></thead><tbody>';
   users.forEach((u, i) => {
-    const isMe = u.name === userName;
+    const name = u.name || '?';
+    const isMe = name === userName;
     const icons = Array.isArray(u.typeList)
       ? u.typeList.map(t => TYPE_MAP[t] || '🏷️').join(' ')
-      : (u.typeList || '—');
+      : (u.typeList ? escHtml(u.typeList) : '—');
     html += `<tr class="${isMe ? 'lb-row-me' : ''}">`;
     html += `<td class="lb-rank">${medals[i] || (i + 1)}</td>`;
-    html += `<td class="lb-name">${u.name}${isMe ? ' (ты)' : ''}</td>`;
-    html += `<td class="lb-val">${u.done}</td>`;
-    html += `<td class="lb-val">${u.hours}</td>`;
+    html += `<td class="lb-name">${escHtml(name)}${isMe ? ' (ты)' : ''}</td>`;
+    html += `<td class="lb-val">${u.done || 0}</td>`;
+    html += `<td class="lb-val">${u.hours || 0}</td>`;
     html += `<td class="lb-val" style="font-size:16px;letter-spacing:2px">${icons}</td>`;
     html += '</tr>';
   });
