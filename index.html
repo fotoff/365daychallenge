@@ -1052,6 +1052,27 @@ function updateStats() {
 }
 
 // --- Leaderboard ---
+function processLeaderboardObj(obj) {
+  const el = document.getElementById('leaderboard');
+  try {
+    const users = [];
+    Object.values(obj || {}).forEach(v => {
+      if (v && typeof v === 'object' && v.name) users.push(v);
+    });
+    users.sort((a, b) => {
+      const dDone = (b.done || 0) - (a.done || 0);
+      if (dDone) return dDone;
+      const dHours = (b.hours || 0) - (a.hours || 0);
+      if (dHours) return dHours;
+      return ((b.typeList || []).length) - ((a.typeList || []).length);
+    });
+    renderLeaderboard(users);
+  } catch (e) {
+    console.error('[lb] render failed:', e);
+    el.innerHTML = `<div class="lb-empty">Ошибка отрисовки: ${escHtml(e && e.message || e)}</div>`;
+  }
+}
+
 function loadLeaderboard() {
   const el = document.getElementById('leaderboard');
   if (!firebaseReady) {
@@ -1059,42 +1080,42 @@ function loadLeaderboard() {
     return;
   }
   el.innerHTML = '<div class="lb-loading">Загрузка...</div>';
+  console.log('[lb] загрузка начата');
   let done = false;
-  const showError = (msg) => {
+
+  // REST fallback на случай, если Firebase websocket блокируется/виснет
+  const restFallback = () => {
     if (done) return;
-    done = true;
-    el.innerHTML = `<div class="lb-empty">${msg}</div>`;
+    console.warn('[lb] websocket таймаут, фоллбек на REST');
+    fetch(FIREBASE_CONFIG.databaseURL + '/leaderboard.json', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (done) return;
+        done = true;
+        console.log('[lb] REST успех');
+        processLeaderboardObj(data);
+      })
+      .catch(err => {
+        if (done) return;
+        done = true;
+        console.error('[lb] REST упал:', err);
+        el.innerHTML = `<div class="lb-empty">Не удалось загрузить.<br><span style="font-size:12px;margin-top:6px;display:block;">Проверь подключение: ${escHtml(err && err.message || err)}</span></div>`;
+      });
   };
-  const timeout = setTimeout(() => {
-    showError('Не удалось загрузить.<br><span style="font-size:12px;margin-top:6px;display:block;">Проверь подключение к интернету</span>');
-  }, 10000);
+  const timeout = setTimeout(restFallback, 5000);
+
   db.ref('leaderboard').once('value').then(snap => {
-    clearTimeout(timeout);
     if (done) return;
-    try {
-      const users = [];
-      snap.forEach(child => {
-        const v = child.val();
-        if (v && typeof v === 'object' && v.name) users.push(v);
-      });
-      // Sort: done desc → hours desc → types desc (с защитой от undefined)
-      users.sort((a, b) => {
-        const dDone = (b.done || 0) - (a.done || 0);
-        if (dDone) return dDone;
-        const dHours = (b.hours || 0) - (a.hours || 0);
-        if (dHours) return dHours;
-        return ((b.typeList || []).length) - ((a.typeList || []).length);
-      });
-      done = true;
-      renderLeaderboard(users);
-    } catch (e) {
-      console.error('Leaderboard render failed:', e);
-      showError('Ошибка отрисовки: ' + (e && e.message || e));
-    }
-  }).catch((err) => {
     clearTimeout(timeout);
-    console.error('Leaderboard fetch failed:', err);
-    showError('Ошибка загрузки');
+    done = true;
+    console.log('[lb] websocket успех');
+    const obj = {};
+    snap.forEach(child => { obj[child.key] = child.val(); });
+    processLeaderboardObj(obj);
+  }).catch(err => {
+    clearTimeout(timeout);
+    console.error('[lb] websocket упал:', err);
+    restFallback();
   });
 }
 
